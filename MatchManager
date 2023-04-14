@@ -1,0 +1,89 @@
+local MatchManager = {} 
+
+local playerHandler = require(game.ServerStorage.ModuleScripts.PlayerHandler)
+local gameSettings = require(game.ServerStorage.ModuleScripts.GameSettings)
+local mapVoting = require(game.ServerStorage.ModuleScripts.MapVoting)
+
+
+local mapsFolder = game.ServerStorage.Maps
+local gameTime = gameSettings.gameTime
+
+MatchManager.currentMap = nil
+
+MatchManager.gameTimer = 0
+
+
+local playerCount = #game.Players:GetPlayers()
+
+local function checkPlayersLeft() --checks how many players left in the match
+	return #game.Teams["In-Game"]:GetPlayers()
+end
+
+local function checkForHand() --used to check if the hand left the game
+	return #game.Teams['The Hand']:GetPlayers()
+
+end
+
+local function SetWinner() --used to set the first place winner when they are the last standing
+	local winner = game.Teams["In-Game"]:GetPlayers()[1] --getting the last player on the game team
+	
+	winner.Info.Placement.Value = 1
+end
+
+function MatchManager.InsufficientPlayers() --used to check if players are still in-game
+	if checkPlayersLeft() ==1 then --checks if theres a winner
+		SetWinner()
+		return true
+	--elseif checkPlayersLeft() >=0 then --blocked out for testing purposes
+		--return true
+	elseif checkForHand() <=0  then
+		return true
+	else
+		return false
+	end
+end
+
+
+function MatchManager.LoadMap(map)
+	--get voted map
+	local map = mapVoting.GetVotedMap()
+	
+	MatchManager.currentMap = mapsFolder[map]:Clone()
+	MatchManager.currentMap.Parent = workspace.Map
+	MatchManager.currentMap.Name = 'Map'
+end
+
+function MatchManager.DeleteMap()
+	workspace.Map:FindFirstChild('Map'):Destroy()
+end
+
+function StartTimer()
+	
+	for i = gameTime,0, -1 do --start the timer countdown
+		MatchManager.gameTimer = i
+		wait(1)
+	end
+
+end
+
+function MatchManager.StartMatch()
+	local timerCoro = coroutine.create(StartTimer)
+	
+	--teleport players
+	MatchManager.LoadMap()
+	playerHandler.GetActivePlayers()
+	playerHandler.TeleportToMap()
+	
+	--StartTimer
+	coroutine.resume(timerCoro)
+
+end
+
+function MatchManager.EndMatch()
+	--teleport players
+	playerHandler.TeleportToSpawn()
+	--delete map
+	MatchManager.DeleteMap()
+end
+
+return MatchManager
