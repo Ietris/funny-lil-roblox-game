@@ -1,0 +1,97 @@
+local PlayerHandler = {}
+
+local Players = game:GetService('Players')
+local gameSettings = require(game.ServerStorage.ModuleScripts.GameSettings)
+
+
+local lobbySpawns = workspace.SpawnLocation
+local mapSpawns
+local lobbyTeam = game.Teams.Lobby
+local gameTeam = game.Teams["In-Game"]
+local handTeam = game.Teams["The Hand"]
+
+PlayerHandler.activePlayers = {}
+
+
+function PlayerHandler.OnPlayerSpawn(player) --handles player join logic
+	player.RespawnLocation = lobbySpawns
+
+	local infoFolder = game.ServerStorage.PlayerInfo:Clone() --adding in the player info folder
+	infoFolder.Parent = player
+	infoFolder.Name = 'Info'
+	infoFolder.Loaded.Value = true --placeholder for testing
+end
+
+local function OnPlayerDisconnect(player) --handles player disconnect logic
+	for i, p in pairs (PlayerHandler.activePlayers) do
+		if p.name == player.name then--checking to see if the player was an active registered player, and removing them
+			table.remove(PlayerHandler.activePlayers, i)
+		end
+	end
+end
+
+function PlayerHandler.GetActivePlayers()
+	table.clear(PlayerHandler.activePlayers) -- clear out the active players table
+
+	for i, player in pairs (Players:GetPlayers()) do --adds active players to the table
+		if player:FindFirstChild('Info'):WaitForChild('Loaded').value then --if the player has loaded in
+			table.insert(PlayerHandler.activePlayers, player)
+		end
+	end
+
+end
+
+function PlayerHandler.ChangeTeam(player, team) --changes the player to a different team
+	player.Team = team
+end
+
+local function ChooseTheHand()
+	local rndNum = math.random(#PlayerHandler.activePlayers) --choosing a random number, and using that to determine the player in the active player table
+	local rndPlayer = PlayerHandler.activePlayers[rndNum]
+
+	PlayerHandler.ChangeTeam(rndPlayer, handTeam)
+
+	--later i need to add logic to loop over and make sure the same player isnt picked twice
+end
+
+function PlayerHandler.TeleportToMap()
+	local map = workspace:WaitForChild('Map').Map
+	local arenaSpawns = map:WaitForChild('Spawns'):GetChildren()--getting the spawns from the map
+
+	for i, player in pairs (PlayerHandler.activePlayers) do
+		local spawnLocation = arenaSpawns[1] --getting the first indexed spawn available
+
+		player.Character:MoveTo(spawnLocation.Position) --force loading the player into the new spawn location on the map
+
+		table.remove(arenaSpawns, 1) --removing the used spawn location
+
+		PlayerHandler.ChangeTeam(player, gameTeam) --chaning the player to the in-game team
+	end
+
+	ChooseTheHand() --choose which player is the hand
+end
+
+function PlayerHandler.TeleportToSpawn()
+	local lobbySpawn = workspace.SpawnLocation
+
+	for i, player in pairs (PlayerHandler.activePlayers) do
+		
+		if player.Team ~= lobbyTeam then --no need to respawn a lobby player
+		
+			local spawnLocation = lobbySpawn --getting the first indexed spawn available
+
+			player.Character:MoveTo(spawnLocation.Position)--force loading the player into the new spawn location on the map
+
+
+			PlayerHandler.ChangeTeam(player, lobbyTeam) --chaning the player to the in-game team
+		end
+		
+	end
+end
+
+--events
+Players.PlayerAdded:Connect(PlayerHandler.OnPlayerSpawn)
+
+Players.PlayerRemoving:Connect(OnPlayerDisconnect)
+
+return PlayerHandler
