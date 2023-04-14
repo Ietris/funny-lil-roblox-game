@@ -1,0 +1,52 @@
+local Players = game:GetService('Players')
+
+local moduleScripts = game.ServerStorage.ModuleScripts
+local transitionEvent = game.ReplicatedStorage.Events.Transition
+
+local gameSettings = require(moduleScripts.GameSettings)
+local playerHandler = require(moduleScripts.PlayerHandler)
+local matchManager = require(moduleScripts.MatchManager)
+local mapVoting = require(moduleScripts.MapVoting)
+
+
+function Transition()
+	transitionEvent:FireAllClients(gameSettings.transitionTime)
+	wait(gameSettings.transitionTime)
+end
+
+
+while true do
+	--waiting for the minimum amount of players to join
+	repeat
+		wait(gameSettings.intermissionTime)
+	until true --playerCount >= gameSettings.minimumPlayers
+	
+	--map voting time, yields until its over
+	mapVoting.StartVote()
+	
+	Transition() --wait the transition time before loading maps
+	
+	--start the match
+	gameSettings.gameOver = false --resets gameover setting
+	matchManager.StartMatch()
+	
+	
+	repeat --will wait until either players are eliminated, timer runs down, or the hand leaves the game
+		wait()
+	until matchManager.gameTimer == 0 or matchManager.InsufficientPlayers() 
+
+	
+	--TODO: get the winner. either the top 3 players win, or the game forfeit due to a mass player disconnect
+	
+	gameSettings.gameOver = true --used to communicate with other scripts that the game is over
+	
+	
+	Transition()
+
+	
+	matchManager.EndMatch()
+	
+	
+end
+
+
