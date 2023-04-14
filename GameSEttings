@@ -1,0 +1,13 @@
+local GameSettings = {}
+
+GameSettings.intermissionTime = 5
+GameSettings.gameTime = 5
+GameSettings.minimumPlayers = 1
+GameSettings.transitionTime = 5
+GameSettings.mapVotingTime = 5
+
+GameSettings.gameOver = false
+
+
+
+return GameSettings
